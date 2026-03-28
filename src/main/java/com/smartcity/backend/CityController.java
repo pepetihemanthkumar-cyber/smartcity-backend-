@@ -30,6 +30,22 @@ public class CityController {
         return repo.findById(id).orElse(null);
     }
 
+    // ✅ UPDATE CITY (NEW 🔥)
+    @PutMapping("/{id}")
+    public City updateCity(@PathVariable Long id, @RequestBody City city) {
+
+        City existing = repo.findById(id).orElse(null);
+
+        if (existing != null) {
+            existing.setName(city.getName());
+            existing.setLocation(city.getLocation());
+            existing.setPopulation(city.getPopulation());
+            return repo.save(existing);
+        }
+
+        return null;
+    }
+
     // ✅ DELETE
     @DeleteMapping("/{id}")
     public String deleteCity(@PathVariable Long id) {

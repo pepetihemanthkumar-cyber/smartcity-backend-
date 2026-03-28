@@ -1,6 +1,9 @@
 package com.smartcity.backend;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 
 @Entity
 public class City {
@@ -13,16 +16,20 @@ public class City {
     private String location;
     private int population;
 
-    // Constructor
-    public City() {}
+    // Default Constructor (REQUIRED)
+    public City() {
+    }
+
+    // Parameterized Constructor (OPTIONAL)
+    public City(String name, String location, int population) {
+        this.name = name;
+        this.location = location;
+        this.population = population;
+    }
 
     // Getters and Setters
     public Long getId() {
         return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
     }
 
     public String getName() {

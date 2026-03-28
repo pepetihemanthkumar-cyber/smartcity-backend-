@@ -11,7 +11,6 @@ public class HomeController {
         return "Smart City Backend is LIVE 🚀";
     }
 
-    // 👉 ADD HERE
     @GetMapping("/test")
     public String test() {
         return "API Working ✅";

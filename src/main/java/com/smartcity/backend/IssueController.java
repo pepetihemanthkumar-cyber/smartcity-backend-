@@ -1,6 +1,8 @@
 package com.smartcity.backend;
 
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize; // 🔥 IMPORTANT
+
 import java.util.List;
 import java.util.Optional;
 
@@ -17,7 +19,7 @@ public class IssueController {
 
     /* ================= CREATE ================= */
 
-    // ✅ SAVE ISSUE
+    // ✅ SAVE ISSUE (USER + ADMIN)
     @PostMapping
     public Issue saveIssue(@RequestBody Issue issue) {
         return repo.save(issue);
@@ -25,7 +27,7 @@ public class IssueController {
 
     /* ================= READ ================= */
 
-    // ✅ GET ALL ISSUES
+    // ✅ GET ALL ISSUES (USER + ADMIN)
     @GetMapping
     public List<Issue> getAll() {
         return repo.findAll();
@@ -40,7 +42,7 @@ public class IssueController {
 
     /* ================= UPDATE ================= */
 
-    // ✅ UPDATE FULL ISSUE
+    // ❌ OPTIONAL (you can restrict if needed)
     @PutMapping("/{id}")
     public Issue updateIssue(@PathVariable Long id, @RequestBody Issue updatedIssue) {
 
@@ -63,7 +65,8 @@ public class IssueController {
         return null;
     }
 
-    // ✅ UPDATE ONLY STATUS (FAST ADMIN USE)
+    // 🔥 ADMIN ONLY → UPDATE STATUS
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}/status")
     public Issue updateStatus(@PathVariable Long id, @RequestBody Issue updatedIssue) {
 
@@ -80,7 +83,8 @@ public class IssueController {
 
     /* ================= DELETE ================= */
 
-    // ✅ DELETE ISSUE
+    // 🔥 ADMIN ONLY → DELETE
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public String deleteIssue(@PathVariable Long id) {
 

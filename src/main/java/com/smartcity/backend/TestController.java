@@ -5,18 +5,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/home")   // ✅ base path
-public class HomeController {
+@RequestMapping("/api")   // 🔥 IMPORTANT: base path to avoid conflict
+public class TestController {
 
-    // 🔥 MAIN HOME API
-    @GetMapping
-    public String home() {
-        return "Smart City Backend is LIVE 🚀";
-    }
-
-    // 🔥 TEST API
+    // ✅ Protected endpoint
     @GetMapping("/test")
     public String test() {
-        return "Home API Working ✅";
+        return "Protected API Working ✅";
     }
 }

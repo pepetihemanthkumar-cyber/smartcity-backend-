@@ -33,22 +33,32 @@ public class JwtFilter extends OncePerRequestFilter {
                                    FilterChain filterChain)
             throws ServletException, IOException {
 
+        String path = request.getRequestURI();
+
+        // ✅🔥 VERY IMPORTANT — SKIP PUBLIC ROUTES
+        if (
+                path.equals("/") ||
+                path.equals("/test") ||
+                path.startsWith("/api/auth") ||
+                path.startsWith("/swagger-ui") ||
+                path.startsWith("/v3/api-docs")
+        ) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String header = request.getHeader("Authorization");
 
         try {
-            // ✅ Check header exists & starts with Bearer
             if (header != null && header.startsWith("Bearer ")) {
 
                 String token = header.substring(7);
 
-                // ✅ Extract username from token
                 String username = jwtUtil.extractUsername(token);
 
-                // ✅ Only authenticate if not already authenticated
                 if (username != null &&
                         SecurityContextHolder.getContext().getAuthentication() == null) {
 
-                    // ✅ Validate token
                     if (jwtUtil.validateToken(token, username)) {
 
                         Optional<User> userOpt = userRepository.findByUsername(username);
@@ -57,7 +67,6 @@ public class JwtFilter extends OncePerRequestFilter {
 
                             User user = userOpt.get();
 
-                            // ✅ Role handling (VERY IMPORTANT)
                             String role = user.getRole();
 
                             SimpleGrantedAuthority authority =
@@ -74,7 +83,6 @@ public class JwtFilter extends OncePerRequestFilter {
                                     new WebAuthenticationDetailsSource().buildDetails(request)
                             );
 
-                            // ✅ Set authentication in context
                             SecurityContextHolder.getContext().setAuthentication(auth);
 
                             System.out.println("✅ AUTH SUCCESS → " + username + " ROLE: " + role);
@@ -84,11 +92,9 @@ public class JwtFilter extends OncePerRequestFilter {
             }
 
         } catch (Exception e) {
-            // ❌ Do NOT crash server
             System.out.println("❌ JWT ERROR → " + e.getMessage());
         }
 
-        // ✅ Continue filter chain ALWAYS
         filterChain.doFilter(request, response);
     }
 }

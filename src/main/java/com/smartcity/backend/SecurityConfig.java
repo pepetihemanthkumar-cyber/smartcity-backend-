@@ -37,31 +37,41 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
+            // ✅ Enable CORS
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
+            // ❌ Disable CSRF
             .csrf(AbstractHttpConfigurer::disable)
+
+            // ❌ Disable default login
             .httpBasic(AbstractHttpConfigurer::disable)
             .formLogin(AbstractHttpConfigurer::disable)
 
+            // ✅ Stateless session
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
 
+            // 🔥🔥🔥 MAIN FIX HERE
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                    "/",
+                    "/",                 
                     "/test",
-                    "/api/auth/**",
-                    "/swagger-ui/**",
-                    "/v3/api-docs/**"
+                    "/api/test",        // ✅ VERY IMPORTANT (ADD THIS)
+                    "/api/auth/**",     
+                    "/swagger-ui/**",   
+                    "/v3/api-docs/**"   
                 ).permitAll()
                 .anyRequest().authenticated()
             )
 
-            // ✅ IMPORTANT: add filter AFTER permit rules
+            // 🔥 JWT filter
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
+    // ================= CORS =================
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -70,7 +80,6 @@ public class SecurityConfig {
 
         config.setAllowCredentials(true);
 
-        // ⚠️ IMPORTANT FIX: use allowedOriginPatterns instead of allowedOrigins
         config.setAllowedOriginPatterns(List.of(
             "http://localhost:3000",
             "http://localhost:5173",
@@ -90,10 +99,14 @@ public class SecurityConfig {
         return source;
     }
 
+    // ================= PASSWORD =================
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
+    // ================= AUTH MANAGER =================
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {

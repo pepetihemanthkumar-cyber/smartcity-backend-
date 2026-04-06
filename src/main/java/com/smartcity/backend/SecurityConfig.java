@@ -24,7 +24,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import java.util.List;
 
 @Configuration
-@EnableMethodSecurity // 🔥 enables @PreAuthorize
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
@@ -56,11 +56,17 @@ public class SecurityConfig {
 
             // 🔐 Authorization rules
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/api/auth/**").permitAll() // 🔓 public
-                .anyRequest().authenticated() // 🔒 protected
+                .requestMatchers(
+                    "/",                // root
+                    "/test",            // test endpoint
+                    "/api/auth/**",     // login/register
+                    "/swagger-ui/**",   // swagger UI
+                    "/v3/api-docs/**"   // swagger docs
+                ).permitAll()
+                .anyRequest().authenticated()
             )
 
-            // 🔥 Add JWT filter before Spring auth filter
+            // 🔥 Add JWT filter
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -73,20 +79,17 @@ public class SecurityConfig {
 
         CorsConfiguration config = new CorsConfiguration();
 
-        // ⚠️ must be true for JWT cookies/headers
         config.setAllowCredentials(true);
 
-        // 🔥 ADD YOUR FRONTEND URLS HERE
         config.setAllowedOrigins(List.of(
             "http://localhost:3000",
             "http://localhost:5173",
-            "http://localhost:30935"
+            "http://localhost:30935",
+            "https://*.vercel.app" // 🔥 add frontend later
         ));
 
-        // allow all headers
         config.setAllowedHeaders(List.of("*"));
 
-        // allow all required methods
         config.setAllowedMethods(List.of(
             "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
         ));

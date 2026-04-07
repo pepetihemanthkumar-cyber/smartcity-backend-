@@ -7,9 +7,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -31,7 +29,7 @@ public class AuthController {
         this.googleService = googleService;
     }
 
-    // ================= REGISTER =================
+    // REGISTER
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody User user) {
 
@@ -44,22 +42,17 @@ public class AuthController {
         }
 
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-
-        user.setRole((user.getRole() == null || user.getRole().isEmpty()) ? "USER" : user.getRole());
-        user.setAvatar(user.getAvatar() == null ? "" : user.getAvatar());
+        user.setRole(user.getRole() == null ? "USER" : user.getRole());
+        user.setAvatar("");
 
         repo.save(user);
 
         return ResponseEntity.ok("User registered successfully ✅");
     }
 
-    // ================= LOGIN =================
+    // LOGIN
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
-
-        if (request.getUsername() == null || request.getPassword() == null) {
-            return ResponseEntity.badRequest().body("Username and password required ❌");
-        }
 
         Optional<User> userOpt = repo.findByUsername(request.getUsername());
 
@@ -78,7 +71,7 @@ public class AuthController {
         return ResponseEntity.ok(buildAuthResponse(token, user));
     }
 
-    // ================= GOOGLE LOGIN =================
+    // GOOGLE LOGIN
     @PostMapping("/google")
     public ResponseEntity<?> googleLogin(@RequestBody Map<String, String> body) {
 
@@ -89,7 +82,6 @@ public class AuthController {
                 return ResponseEntity.badRequest().body("Token missing ❌");
             }
 
-            // 🔥 VERIFY TOKEN
             GoogleIdToken.Payload payload = googleService.verifyToken(token);
 
             if (payload == null) {
@@ -98,18 +90,13 @@ public class AuthController {
 
             String email = payload.getEmail();
 
-            if (email == null) {
-                return ResponseEntity.badRequest().body("Email not found ❌");
-            }
-
             Optional<User> userOpt = repo.findByUsername(email);
             User user;
 
             if (userOpt.isEmpty()) {
-                // 🔥 CREATE NEW USER
                 user = new User();
                 user.setUsername(email);
-                user.setPassword(""); // Google users don’t need password
+                user.setPassword("");
                 user.setRole("USER");
                 user.setAvatar("");
 
@@ -123,12 +110,12 @@ public class AuthController {
             return ResponseEntity.ok(buildAuthResponse(jwt, user));
 
         } catch (Exception e) {
-            e.printStackTrace(); // 🔥 debug help
+            e.printStackTrace();
             return ResponseEntity.badRequest().body("Google login failed ❌");
         }
     }
 
-    // ================= CURRENT USER =================
+    // CURRENT USER
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(Authentication auth) {
 
@@ -138,15 +125,14 @@ public class AuthController {
 
         Optional<User> userOpt = repo.findByUsername(auth.getName());
 
-        if (userOpt.isEmpty()) {
+        if (userOpt.isPresent()) {
+            return ResponseEntity.ok(buildUserResponse(userOpt.get()));
+        } else {
             return ResponseEntity.badRequest().body("User not found ❌");
         }
-
-        return ResponseEntity.ok(buildUserResponse(userOpt.get()));
     }
 
-    // ================= HELPERS =================
-
+    // HELPERS
     private Map<String, Object> buildAuthResponse(String token, User user) {
         Map<String, Object> res = new HashMap<>();
         res.put("token", token);

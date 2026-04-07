@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "users")
-@JsonIgnoreProperties(ignoreUnknown = true) // 🔥 prevents JSON parsing issues
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class User {
 
     @Id
@@ -21,11 +21,14 @@ public class User {
     @Column(nullable = false)
     private String role;
 
-    // ✅ REQUIRED (for JSON → Object)
-    public User() {
-    }
+    // 🔥 NEW FIELD (AVATAR)
+    @Column(name = "avatar")
+    private String avatar;
 
-    // ✅ Optional constructor
+    // ✅ DEFAULT CONSTRUCTOR
+    public User() {}
+
+    // ✅ OPTIONAL CONSTRUCTOR
     public User(String username, String password, String role) {
         this.username = username;
         this.password = password;
@@ -50,6 +53,10 @@ public class User {
         return role;
     }
 
+    public String getAvatar() {
+        return avatar;
+    }
+
     // ================= SETTERS =================
 
     public void setId(Long id) {
@@ -66,5 +73,9 @@ public class User {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
     }
 }

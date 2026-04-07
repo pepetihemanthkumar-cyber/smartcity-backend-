@@ -21,6 +21,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.cors.CorsConfigurationSource;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 import java.util.List;
 
 @Configuration
@@ -39,31 +41,51 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
-            // ✅ Enable CORS
+            // ✅ CORS
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-            // ❌ Disable CSRF (REST API)
+            // ❌ CSRF
             .csrf(AbstractHttpConfigurer::disable)
 
-            // ❌ Disable default login UI
+            // ❌ Disable default login
             .httpBasic(AbstractHttpConfigurer::disable)
             .formLogin(AbstractHttpConfigurer::disable)
 
-            // ✅ Stateless session (JWT)
+            // ✅ Stateless (JWT)
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
 
-            // 🔥 PUBLIC + PROTECTED ROUTES
+            // 🔥 FIX: HANDLE 401 INSTEAD OF 403
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((req, res, e) -> {
+                    res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+                })
+            )
+
+            // 🔥 ROUTES
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                    "/",                   // root
-                    "/test",               // test
-                    "/api/test",           // 🔥 IMPORTANT
-                    "/api/auth/**",        // login/register
-                    "/swagger-ui/**",      // swagger UI
-                    "/v3/api-docs/**"      // swagger docs
+                    "/",                   
+                    "/test",
+                    "/api/test",
+
+                    // ✅ AUTH (VERY IMPORTANT)
+                    "/api/auth/login",
+                    "/api/auth/register",
+                    "/api/auth/**",
+
+                    // ✅ FILE UPLOAD
+                    "/api/upload",
+
+                    // ✅ STATIC IMAGES
+                    "/uploads/**",
+
+                    // Swagger
+                    "/swagger-ui/**",
+                    "/v3/api-docs/**"
                 ).permitAll()
+
                 .anyRequest().authenticated()
             )
 
@@ -73,17 +95,15 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /* ================= CORS CONFIG ================= */
+    /* ================= CORS ================= */
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration config = new CorsConfiguration();
 
-        // ⚠️ REQUIRED for JWT
         config.setAllowCredentials(true);
 
-        // 🔥 SUPPORT LOCAL + VERCEL
         config.setAllowedOriginPatterns(List.of(
             "http://localhost:3000",
             "http://localhost:5173",
@@ -91,10 +111,8 @@ public class SecurityConfig {
             "https://*.vercel.app"
         ));
 
-        // allow all headers
         config.setAllowedHeaders(List.of("*"));
 
-        // allow all methods
         config.setAllowedMethods(List.of(
             "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
         ));
@@ -105,7 +123,7 @@ public class SecurityConfig {
         return source;
     }
 
-    /* ================= PASSWORD ENCODER ================= */
+    /* ================= PASSWORD ================= */
 
     @Bean
     public PasswordEncoder passwordEncoder() {

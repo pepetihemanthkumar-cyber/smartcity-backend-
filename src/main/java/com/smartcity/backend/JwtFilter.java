@@ -35,12 +35,14 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // 🔥🔥🔥 FINAL FIX — ADD /api/test HERE
+        // 🔥🔥🔥 BYPASS PUBLIC ROUTES (VERY IMPORTANT)
         if (
                 path.equals("/") ||
                 path.equals("/test") ||
-                path.equals("/api/test") ||   // ✅ THIS WAS MISSING
-                path.startsWith("/api/auth") ||
+                path.equals("/api/test") ||
+                path.startsWith("/api/auth") ||     // login/register
+                path.startsWith("/api/upload") ||   // ✅ FIX ADDED
+                path.startsWith("/uploads") ||      // ✅ FIX ADDED
                 path.startsWith("/swagger-ui") ||
                 path.startsWith("/v3/api-docs")
         ) {

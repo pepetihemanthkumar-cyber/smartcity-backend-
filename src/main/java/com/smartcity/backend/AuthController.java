@@ -1,25 +1,34 @@
 package com.smartcity.backend;
 
+import com.smartcity.backend.service.GoogleService;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*") // ✅ allow frontend (React)
+@CrossOrigin(origins = "*")
 public class AuthController {
 
     private final UserRepository repo;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
+    private final GoogleService googleService;
 
-    // ✅ Constructor Injection
-    public AuthController(UserRepository repo, JwtUtil jwtUtil, PasswordEncoder passwordEncoder) {
+    public AuthController(UserRepository repo,
+                          JwtUtil jwtUtil,
+                          PasswordEncoder passwordEncoder,
+                          GoogleService googleService) {
         this.repo = repo;
         this.jwtUtil = jwtUtil;
         this.passwordEncoder = passwordEncoder;
+        this.googleService = googleService;
     }
 
     // ================= REGISTER =================
@@ -30,18 +39,14 @@ public class AuthController {
             return ResponseEntity.badRequest().body("Username and password required ❌");
         }
 
-        Optional<User> existingUser = repo.findByUsername(user.getUsername());
-        if (existingUser.isPresent()) {
+        if (repo.findByUsername(user.getUsername()).isPresent()) {
             return ResponseEntity.badRequest().body("Username already exists ❌");
         }
 
-        // 🔐 Encrypt password
         user.setPassword(passwordEncoder.encode(user.getPassword()));
 
-        // 👤 Default role
-        if (user.getRole() == null || user.getRole().isEmpty()) {
-            user.setRole("USER");
-        }
+        user.setRole((user.getRole() == null || user.getRole().isEmpty()) ? "USER" : user.getRole());
+        user.setAvatar(user.getAvatar() == null ? "" : user.getAvatar());
 
         repo.save(user);
 
@@ -62,19 +67,100 @@ public class AuthController {
             return ResponseEntity.badRequest().body("User not found ❌");
         }
 
-        User existing = userOpt.get();
+        User user = userOpt.get();
 
-        // ❌ Wrong password
-        if (!passwordEncoder.matches(request.getPassword(), existing.getPassword())) {
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             return ResponseEntity.badRequest().body("Invalid password ❌");
         }
 
-        // 🔐 Generate JWT (IMPORTANT: include role)
-        String token = jwtUtil.generateToken(
-                existing.getUsername(),
-                existing.getRole()
-        );
+        String token = jwtUtil.generateToken(user.getUsername(), user.getRole());
 
-        return ResponseEntity.ok(new AuthResponse(token));
+        return ResponseEntity.ok(buildAuthResponse(token, user));
+    }
+
+    // ================= GOOGLE LOGIN =================
+    @PostMapping("/google")
+    public ResponseEntity<?> googleLogin(@RequestBody Map<String, String> body) {
+
+        try {
+            String token = body.get("token");
+
+            if (token == null || token.isEmpty()) {
+                return ResponseEntity.badRequest().body("Token missing ❌");
+            }
+
+            // 🔥 VERIFY TOKEN
+            GoogleIdToken.Payload payload = googleService.verifyToken(token);
+
+            if (payload == null) {
+                return ResponseEntity.badRequest().body("Invalid Google token ❌");
+            }
+
+            String email = payload.getEmail();
+
+            if (email == null) {
+                return ResponseEntity.badRequest().body("Email not found ❌");
+            }
+
+            Optional<User> userOpt = repo.findByUsername(email);
+            User user;
+
+            if (userOpt.isEmpty()) {
+                // 🔥 CREATE NEW USER
+                user = new User();
+                user.setUsername(email);
+                user.setPassword(""); // Google users don’t need password
+                user.setRole("USER");
+                user.setAvatar("");
+
+                repo.save(user);
+            } else {
+                user = userOpt.get();
+            }
+
+            String jwt = jwtUtil.generateToken(user.getUsername(), user.getRole());
+
+            return ResponseEntity.ok(buildAuthResponse(jwt, user));
+
+        } catch (Exception e) {
+            e.printStackTrace(); // 🔥 debug help
+            return ResponseEntity.badRequest().body("Google login failed ❌");
+        }
+    }
+
+    // ================= CURRENT USER =================
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(Authentication auth) {
+
+        if (auth == null) {
+            return ResponseEntity.status(401).body("Unauthorized ❌");
+        }
+
+        Optional<User> userOpt = repo.findByUsername(auth.getName());
+
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body("User not found ❌");
+        }
+
+        return ResponseEntity.ok(buildUserResponse(userOpt.get()));
+    }
+
+    // ================= HELPERS =================
+
+    private Map<String, Object> buildAuthResponse(String token, User user) {
+        Map<String, Object> res = new HashMap<>();
+        res.put("token", token);
+        res.put("username", user.getUsername());
+        res.put("role", user.getRole());
+        res.put("avatar", user.getAvatar());
+        return res;
+    }
+
+    private Map<String, Object> buildUserResponse(User user) {
+        Map<String, Object> res = new HashMap<>();
+        res.put("username", user.getUsername());
+        res.put("role", user.getRole());
+        res.put("avatar", user.getAvatar());
+        return res;
     }
 }

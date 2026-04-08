@@ -56,7 +56,7 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
 
-            // 🔥 FIX: HANDLE 401 INSTEAD OF 403
+            // 🔥 HANDLE 401
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((req, res, e) -> {
                     res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
@@ -65,27 +65,28 @@ public class SecurityConfig {
 
             // 🔥 ROUTES
             .authorizeHttpRequests(auth -> auth
+
+                // ✅ PUBLIC ROUTES
                 .requestMatchers(
-                    "/",                   
+                    "/",
                     "/test",
                     "/api/test",
 
-                    // ✅ AUTH (VERY IMPORTANT)
                     "/api/auth/login",
                     "/api/auth/register",
                     "/api/auth/**",
 
-                    // ✅ FILE UPLOAD
                     "/api/upload",
-
-                    // ✅ STATIC IMAGES
                     "/uploads/**",
 
-                    // Swagger
                     "/swagger-ui/**",
                     "/v3/api-docs/**"
                 ).permitAll()
 
+                // 🔥🔥🔥 ADD THIS LINE (IMPORTANT FIX)
+                .requestMatchers("/api/issues/**").permitAll()
+
+                // 🔒 EVERYTHING ELSE
                 .anyRequest().authenticated()
             )
 

@@ -41,29 +41,29 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
-            // ✅ CORS
+            // ✅ ENABLE CORS
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-            // ❌ CSRF
+            // ❌ DISABLE CSRF
             .csrf(AbstractHttpConfigurer::disable)
 
-            // ❌ Disable default login
+            // ❌ DISABLE DEFAULT LOGIN
             .httpBasic(AbstractHttpConfigurer::disable)
             .formLogin(AbstractHttpConfigurer::disable)
 
-            // ✅ Stateless (JWT)
+            // ✅ STATELESS (JWT)
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
 
-            // 🔥 HANDLE 401
+            // 🔥 HANDLE 401 (IMPORTANT)
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((req, res, e) -> {
                     res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
                 })
             )
 
-            // 🔥 ROUTES
+            // 🔥 ROUTES CONFIG
             .authorizeHttpRequests(auth -> auth
 
                 // ✅ PUBLIC ROUTES
@@ -83,10 +83,10 @@ public class SecurityConfig {
                     "/v3/api-docs/**"
                 ).permitAll()
 
-                // 🔥🔥🔥 ADD THIS LINE (IMPORTANT FIX)
+                // 🔥🔥🔥 IMPORTANT FIX (ALLOW ISSUES)
                 .requestMatchers("/api/issues/**").permitAll()
 
-                // 🔒 EVERYTHING ELSE
+                // 🔒 EVERYTHING ELSE NEEDS AUTH
                 .anyRequest().authenticated()
             )
 
@@ -96,27 +96,33 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /* ================= CORS ================= */
+    /* ================= CORS CONFIG ================= */
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration config = new CorsConfiguration();
 
+        // 🔥 ALLOW COOKIES + AUTH
         config.setAllowCredentials(true);
 
-        config.setAllowedOriginPatterns(List.of(
+        // 🔥 VERY IMPORTANT (FIX VERCEL ISSUE)
+        config.setAllowedOrigins(List.of(
             "http://localhost:3000",
             "http://localhost:5173",
-            "http://localhost:*",
-            "https://*.vercel.app"
+            "https://smartcity-professional.vercel.app" // 🔥 REPLACE IF DIFFERENT
         ));
 
-        config.setAllowedHeaders(List.of("*"));
-
+        // 🔥 ALLOW ALL METHODS
         config.setAllowedMethods(List.of(
             "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
         ));
+
+        // 🔥 ALLOW HEADERS
+        config.setAllowedHeaders(List.of("*"));
+
+        // 🔥 EXPOSE AUTH HEADER
+        config.setExposedHeaders(List.of("Authorization"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

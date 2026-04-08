@@ -2,6 +2,7 @@ package com.smartcity.backend;
 
 import com.smartcity.backend.service.GoogleService;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -11,7 +12,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "*") // ✅ keep this for now
 public class AuthController {
 
     private final UserRepository repo;
@@ -29,7 +30,8 @@ public class AuthController {
         this.googleService = googleService;
     }
 
-    // REGISTER
+    /* ================= REGISTER ================= */
+
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody User user) {
 
@@ -50,7 +52,8 @@ public class AuthController {
         return ResponseEntity.ok("User registered successfully ✅");
     }
 
-    // LOGIN
+    /* ================= LOGIN ================= */
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
 
@@ -71,7 +74,8 @@ public class AuthController {
         return ResponseEntity.ok(buildAuthResponse(token, user));
     }
 
-    // GOOGLE LOGIN
+    /* ================= GOOGLE LOGIN ================= */
+
     @PostMapping("/google")
     public ResponseEntity<?> googleLogin(@RequestBody Map<String, String> body) {
 
@@ -79,24 +83,35 @@ public class AuthController {
             String token = body.get("token");
 
             if (token == null || token.isEmpty()) {
-                return ResponseEntity.badRequest().body("Token missing ❌");
+                return ResponseEntity.badRequest().body(Map.of("error", "Token missing ❌"));
             }
+
+            System.out.println("🔍 Verifying Google Token...");
 
             GoogleIdToken.Payload payload = googleService.verifyToken(token);
 
             if (payload == null) {
-                return ResponseEntity.badRequest().body("Invalid Google token ❌");
+                return ResponseEntity.status(401).body(Map.of("error", "Invalid Google token ❌"));
             }
 
             String email = payload.getEmail();
+            String name = (String) payload.get("name");
+
+            System.out.println("✅ GOOGLE LOGIN SUCCESS");
+            System.out.println("📧 Email: " + email);
+            System.out.println("👤 Name: " + name);
 
             Optional<User> userOpt = repo.findByUsername(email);
             User user;
 
+            // ✅ CREATE USER IF NOT EXISTS
             if (userOpt.isEmpty()) {
                 user = new User();
                 user.setUsername(email);
-                user.setPassword("");
+
+                // 🔥 IMPORTANT FIX (empty password issue)
+                user.setPassword(passwordEncoder.encode("GOOGLE_USER"));
+
                 user.setRole("USER");
                 user.setAvatar("");
 
@@ -105,17 +120,20 @@ public class AuthController {
                 user = userOpt.get();
             }
 
+            // ✅ GENERATE JWT
             String jwt = jwtUtil.generateToken(user.getUsername(), user.getRole());
 
+            // 🔥 VERY IMPORTANT (frontend expects "token")
             return ResponseEntity.ok(buildAuthResponse(jwt, user));
 
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body("Google login failed ❌");
+            return ResponseEntity.status(500).body(Map.of("error", "Google login failed ❌"));
         }
     }
 
-    // CURRENT USER
+    /* ================= CURRENT USER ================= */
+
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(Authentication auth) {
 
@@ -132,10 +150,11 @@ public class AuthController {
         }
     }
 
-    // HELPERS
+    /* ================= HELPERS ================= */
+
     private Map<String, Object> buildAuthResponse(String token, User user) {
         Map<String, Object> res = new HashMap<>();
-        res.put("token", token);
+        res.put("token", token);   // 🔥 IMPORTANT
         res.put("username", user.getUsername());
         res.put("role", user.getRole());
         res.put("avatar", user.getAvatar());

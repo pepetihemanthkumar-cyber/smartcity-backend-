@@ -56,17 +56,16 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
 
-            // 🔥 HANDLE 401 (IMPORTANT)
+            // 🔥 HANDLE 401
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((req, res, e) -> {
                     res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
                 })
             )
 
-            // 🔥 ROUTES CONFIG
+            // 🔥 ROUTES
             .authorizeHttpRequests(auth -> auth
 
-                // ✅ PUBLIC ROUTES
                 .requestMatchers(
                     "/",
                     "/test",
@@ -83,10 +82,9 @@ public class SecurityConfig {
                     "/v3/api-docs/**"
                 ).permitAll()
 
-                // 🔥🔥🔥 IMPORTANT FIX (ALLOW ISSUES)
+                // 🔥 ALLOW ISSUES
                 .requestMatchers("/api/issues/**").permitAll()
 
-                // 🔒 EVERYTHING ELSE NEEDS AUTH
                 .anyRequest().authenticated()
             )
 
@@ -96,32 +94,29 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /* ================= CORS CONFIG ================= */
+    /* ================= CORS CONFIG (FIXED) ================= */
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration config = new CorsConfiguration();
 
-        // 🔥 ALLOW COOKIES + AUTH
         config.setAllowCredentials(true);
 
-        // 🔥 VERY IMPORTANT (FIX VERCEL ISSUE)
+        // ✅ ADD YOUR REAL DOMAINS HERE
         config.setAllowedOrigins(List.of(
             "http://localhost:3000",
             "http://localhost:5173",
-            "https://smartcity-professional.vercel.app" // 🔥 REPLACE IF DIFFERENT
+            "http://localhost:30935",
+            "https://smart-city-steel-zeta.vercel.app"  // ✅ CORRECT DOMAIN
         ));
 
-        // 🔥 ALLOW ALL METHODS
         config.setAllowedMethods(List.of(
             "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
         ));
 
-        // 🔥 ALLOW HEADERS
         config.setAllowedHeaders(List.of("*"));
 
-        // 🔥 EXPOSE AUTH HEADER
         config.setExposedHeaders(List.of("Authorization"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
